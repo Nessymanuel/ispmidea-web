@@ -111,7 +111,7 @@ export default function RadioPage() {
   return (
     <MainLayout>
       <Navbar />
-      <div className="space-y-6 pt-16 px-4">
+      <div className="space-y-6 pt-20 px-4">
         <h1 className="text-3xl font-bold">Rádios de Angola</h1>
 
         <div className="flex gap-4 flex-wrap">

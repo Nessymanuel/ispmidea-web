@@ -86,7 +86,7 @@ export default function NotificationsPage() {
   return (
     <MainLayout>
       <Navbar/>
-      <div className="space-y-6 pt-16">
+      <div className="space-y-6 pt-20 mx-4 ">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Notificações</h1>
           <Button

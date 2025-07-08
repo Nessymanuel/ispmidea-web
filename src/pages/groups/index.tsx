@@ -86,7 +86,7 @@ export default function GroupsPage() {
   return (
     <MainLayout>
       <Navbar/>
-      <div className="space-y-6 pt-16">
+      <div className="space-y-6 pt-20 px-4">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Grupos</h1>
           <Button 

@@ -61,7 +61,7 @@ export default function ProfilePage() {
   return (
     <MainLayout>
       <Navbar/>
-      <div className="max-w-6xl mx-auto space-y-6 pt-16">
+      <div className="max-w-6xl mx-auto space-y-6 pt-20">
         {/* Profile Header */}
         <Card className="p-6">
           <div className="flex items-start gap-6">

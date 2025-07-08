@@ -1,6 +1,6 @@
-import { ReactNode } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { ReactNode } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
 import { 
   Home, 
   Music, 
@@ -11,59 +11,64 @@ import {
   User, 
   Settings,
   PlayCircle,
-  Star,
-  UserPlus
-} from 'lucide-react';
-
+  PlusCircle,
+  Upload,
+  Album,
+  Mic2,
+  ListMusic
+} from 'lucide-react'
+import { Navbar } from './navbar'
 
 interface MainLayoutProps {
-  children: ReactNode;
+  children: ReactNode
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
-  { name: 'Autores', href: '/authors', icon: UserPlus },
-  { name: 'Mídias', href: '/media', icon: Music },
-  { name: 'Playlists', href: '/playlists', icon: PlayCircle },
+const navItems = [
+  { name: 'Início', href: '/dashboard', icon: Home },
+  { name: 'Explorar', href: '/explore', icon: Music },
+  { name: 'Artistas', href: '/artists', icon: Mic2 },
+  { name: 'Álbuns', href: '/albums', icon: Album },
+  { name: 'Playlists', href: '/playlists', icon: ListMusic },
   { name: 'Grupos', href: '/groups', icon: Users },
   { name: 'Rádio', href: '/radio', icon: Radio },
-  { name: 'Notificações', href: '/notifications', icon: Bell },
-  { name: 'Perfil', href: '/profile', icon: User },
-  { name: 'Configurações', href: '/settings', icon: Settings },
-];
+  { name: 'Enviar', href: '/upload', icon: Upload },
+]
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const router = useRouter();
+  const router = useRouter()
 
   return (
-    <div className="min-h-screen bg-purple-50">
+    <div className="min-h-screen bg-gray-50">
       <div className="flex">
-        {/* Sidebar */}
-        <div className="fixed h-screen w-64 bg-white shadow-lg pt-12 ">
-          <nav className="mt-4 ">
-            {navigation.map((item) => {
-              const isActive = router.pathname === item.href;
+        {/* Sidebar mais compacta */}
+        <aside className="fixed h-screen w-56 bg-white shadow-sm  hidden md:block border-r my-14">
+          <nav className="mt-8 space-y-1 px-2">
+            {navItems.map(item => {
+              const isActive = router.pathname === item.href
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 ${
-                    isActive ? 'bg-gray-100 border-l-4 border-purple-700' : ''
+                  className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium ${
+                    isActive
+                      ? 'bg-purple-50 text-purple-700'
+                      : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
                   <item.icon className="w-5 h-5 mr-3" />
                   {item.name}
                 </Link>
-              );
+              )
             })}
           </nav>
-        </div>
+        </aside>
 
-        {/* Main content */}
-        <div className="flex-1 ml-64 p-8">
+        {/* Conteúdo principal com margem adequada */}
+        <div className="flex-1 md:ml-56">
+          <Navbar />
           {children}
         </div>
       </div>
     </div>
-  );
-} 
+  )
+}
