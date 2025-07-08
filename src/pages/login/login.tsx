@@ -16,12 +16,18 @@ export function Login() {
     const [error, setError] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
 
+
     const handleSubmit = async (e: React.FormEvent) => {
- e.preventDefault();
-    
-    // For now, we'll just redirect back to the content list
-    router.push('/dashboard');
+        e.preventDefault();
+        try {
+            await signIn(email, password);
+
+        } catch (err) {
+            setError("Email ou senha inválidos");
+        }
     };
+
+
 
     return (
         <div className="flex flex-row w-screen h-screen">
@@ -69,12 +75,9 @@ export function Login() {
                             <a href="#" className="text-purple-600 hover:text-purple-500">Esqueceu a senha?</a>
                         </div>
 
-
-                        <Link href="/dashboard" >
-                            <Button  variant={"secondary"} className="w-full h-12 my-8">
-                                Entrar
-                            </Button>
-                        </Link>
+                        <Button variant={"secondary"} className="w-full h-12 my-8">
+                            Entrar
+                        </Button>
 
                         <div className="py-3 text-center">
                             <p>Não tem conta?</p>

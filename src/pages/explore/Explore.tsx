@@ -18,7 +18,7 @@ const trendingContent = Array.from({ length: 12 }, (_, i) => ({
   type: ['music', 'video', 'album'][i % 3],
   author: `Artista ${String.fromCharCode(65 + (i % 10))}`,
   plays: Math.floor(Math.random() * 10000),
-  cover: `/cover-${(i % 6) + 1}.jpg`
+  cover: "./profileimg.jpg"
 }))
 
 export default function Explore() {

@@ -1,92 +1,72 @@
-import { useState, useEffect, createContext, useContext } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import axios from "axios";
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'user' | 'editor';
+const API_BASE_URL = "https://smart-donuts-talk.loca.lt/api/user";
+
+export function useAuth() {
+    const router = useRouter();
+    const [loading, setLoading] = useState(false);
+
+    // LOGIN
+    const signIn = async (email: string, password: string): Promise<void> => {
+        try {
+            setLoading(true);
+
+            const response = await axios.post(`https://smart-donuts-talk.loca.lt/api/user/login`, {
+                email,
+                senha: password,
+
+            },
+                // {
+                //     withCredentials: false
+                // }
+            );
+            console.log({ response });
+
+            const user = response.data;
+
+            // Armazena dados no localStorage (opcional)
+            localStorage.setItem("user", JSON.stringify(user));
+
+            // Redireciona após login
+            router.push("/dashboard");
+
+        } catch (error) {
+            console.error("Erro ao fazer login:", error);
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // REGISTO
+    const signUp = async (formData: FormData): Promise<void> => {
+        try {
+            setLoading(true);
+
+            await axios.post(API_BASE_URL, formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+
+            router.push("/login");
+        } catch (error) {
+            console.error("Erro ao criar conta:", error);
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const signOut = () => {
+        localStorage.removeItem("user");
+        router.push("/login");
+    };
+
+    return {
+        signIn,
+        signUp,
+        signOut,
+        loading,
+    };
 }
-
-interface AuthContextType {
-  user: User | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
-  signOut: () => void;
-  loading: boolean;
-}
-
-const AuthContext = createContext<AuthContextType>({} as AuthContextType);
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    // Check if user is logged in
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
-  }, []);
-
-  const signIn = async (email: string, password: string) => {
-    try {
-      // Here you would typically make an API call to your backend
-      // For now, we'll simulate a successful login
-      const mockUser: User = {
-        id: '1',
-        email,
-        name: 'Usuário Teste',
-        role: 'user'
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      router.push('/content');
-    } catch (error) {
-      throw new Error('Falha ao fazer login');
-    }
-  };
-
-  const signUp = async (email: string, password: string, name: string) => {
-    try {
-      // Here you would typically make an API call to your backend
-      // For now, we'll simulate a successful registration
-      const mockUser: User = {
-        id: '1',
-        email,
-        name,
-        role: 'user'
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      router.push('/content');
-    } catch (error) {
-      throw new Error('Falha ao criar conta');
-    }
-  };
-
-  const signOut = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    router.push('/');
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, signIn, signUp, signOut, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}; 
