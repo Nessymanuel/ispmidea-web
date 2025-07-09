@@ -1,71 +1,116 @@
-
 'use client'
 
-import { useState, Fragment } from 'react'
-import { motion } from 'framer-motion'
-import { Users, Album, Play, Plus, Edit, Trash, X, Save } from 'lucide-react'
-import MainLayout from '@/components/layout/MainLayout'
+import { useEffect, useState, Fragment } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
+import { X, Edit, Save, Trash, Plus, UploadCloud } from 'lucide-react'
+import axios from 'axios'
+import MainLayout from '@/components/layout/MainLayout'
+import { CreateArtistForm } from '@/components/forms/CreateArtistForm'
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
 type Artist = {
   id: number
-  name: string
-  followers: number
-  albums: number
-  cover: string
-  genre?: string
-  bio?: string
+  nomeArtista: string
+  generoMusical: string
+  biografia: string
+  nacionalidade: string
+  fotoArtista: string
+  grupoMusicalId?: number
+  utilizadorId: number
+}
+
+type Grupo = {
+  id: number
+  nomeGrupoMusical: string
 }
 
 export default function Artists() {
-  const [artists, setArtists] = useState<Artist[]>(
-    Array.from({ length: 24 }, (_, i) => ({
-      id: i + 1,
-      name: `Artista ${String.fromCharCode(65 + i)}`,
-      followers: Math.floor(Math.random() * 1000000),
-      albums: Math.floor(Math.random() * 10) + 1,
-      cover: "./imgprofile.png",
-      genre: ['Pop', 'Rock', 'Hip Hop', 'Eletrônica', 'Jazz'][i % 5],
-      bio: `Biografia do Artista ${String.fromCharCode(65 + i)}`
-    }))
-  )
-
+  const [artists, setArtists] = useState<Artist[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedGenre, setSelectedGenre] = useState("")
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null)
   const [editMode, setEditMode] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [grupos, setGrupos] = useState<Grupo[]>([])
+  const [newFoto, setNewFoto] = useState<File | null>(null)
 
+  useEffect(() => {
+    axios.get(`${BASE_URL}/api/Artista`)
+      .then(res => setArtists(res.data))
+      .catch(err => console.error("Erro ao buscar artistas:", err))
+
+    axios.get(`${BASE_URL}/api/GrupoMusical`)
+      .then(res => setGrupos(res.data))
+      .catch(err => console.error("Erro ao buscar grupos:", err))
+  }, [])
+
+  const genres = Array.from(new Set(artists.map(a => a.generoMusical)))
   const filteredArtists = artists.filter(a =>
-    a.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (selectedGenre ? a.genre === selectedGenre : true)
+    a.nomeArtista.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    (selectedGenre ? a.generoMusical === selectedGenre : true)
   )
 
-  const genres = Array.from(new Set(artists.map(a => a.genre)))
-
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
+    await axios.delete(`${BASE_URL}/api/Artista/${id}`)
     setArtists(prev => prev.filter(a => a.id !== id))
     setSelectedArtist(null)
   }
 
-  const handleSave = () => {
-    if (!selectedArtist) return
-    setArtists(prev => prev.map(a => a.id === selectedArtist.id ? selectedArtist : a))
-    setEditMode(false)
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setNewFoto(e.target.files[0])
+    }
+  }
+
+  const handleSave = async () => {
+    if (!selectedArtist || !selectedArtist.utilizadorId) {
+      alert("O artista precisa ter um utilizadorId.")
+      return
+    }
+
+    const formData = new FormData()
+    formData.append("nomeArtista", selectedArtist.nomeArtista)
+    formData.append("generoMusical", selectedArtist.generoMusical)
+    formData.append("biografia", selectedArtist.biografia)
+    formData.append("nacionalidade", selectedArtist.nacionalidade)
+    formData.append("utilizadorId", selectedArtist.utilizadorId.toString())
+
+    if (selectedArtist.grupoMusicalId != null) {
+      formData.append("grupoMusicalId", selectedArtist.grupoMusicalId.toString())
+    }
+
+    if (newFoto) {
+      formData.append("foto", newFoto)
+    }
+
+    try {
+      const res = await axios.put(`${BASE_URL}/api/Artista/${selectedArtist.id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      setArtists(prev =>
+        prev.map(a => a.id === selectedArtist.id ? res.data : a)
+      )
+      setEditMode(false)
+      setNewFoto(null)
+    } catch (error: any) {
+      console.error("Erro ao atualizar artista:", error.response?.data || error.message)
+      alert("Erro ao atualizar artista. Verifique os campos.")
+    }
   }
 
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto px-4 py-20 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-18">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold">Artistas</h1>
-          </div>
-          <div className="flex gap-12 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-3xl font-bold">Artistas</h1>
+          <div className="flex gap-4 flex-wrap">
             <input
-              placeholder="Digite o nome do artista"
+              placeholder="Pesquisar artista"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className=" mx-24 px-24 py-1 border rounded-lg"
+              className="px-4 py-2 border rounded-lg w-64"
             />
             <select
               value={selectedGenre}
@@ -77,6 +122,12 @@ export default function Artists() {
                 <option key={genre} value={genre}>{genre}</option>
               ))}
             </select>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="bg-purple-600 text-white px-4 py-2 rounded flex items-center gap-2"
+            >
+              <Plus size={16} /> Novo Artista
+            </button>
           </div>
         </div>
 
@@ -88,56 +139,82 @@ export default function Artists() {
               onClick={() => { setSelectedArtist(artist); setEditMode(false) }}
             >
               <div className="relative w-full aspect-square rounded-full overflow-hidden mb-3">
-                <img src={artist.cover} alt={artist.name} className="object-cover w-full h-full" />
-                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity" />
-
+                <img
+                  src={`${BASE_URL}${artist.fotoArtista}`}
+                  alt={artist.nomeArtista}
+                  className="object-cover w-full h-full"
+                />
               </div>
-              <h3 className="font-semibold">{artist.name}</h3>
-              <p className="text-xs text-gray-500">{artist.genre}</p>
+              <h3 className="font-semibold">{artist.nomeArtista}</h3>
+              <p className="text-xs text-gray-500">{artist.generoMusical}</p>
             </div>
           ))}
         </div>
 
+        {/* Modal Detalhes / Edição */}
         <Transition show={!!selectedArtist} as={Fragment}>
           <Dialog onClose={() => setSelectedArtist(null)} className="relative z-50">
-            <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
+            <Transition.Child as={Fragment}>
               <div className="fixed inset-0 bg-black/30" />
             </Transition.Child>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-              <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <Transition.Child as={Fragment}>
                 <Dialog.Panel className="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
                   <div className="flex justify-between items-center">
                     <Dialog.Title className="text-lg font-bold">Detalhes do Artista</Dialog.Title>
                     <button onClick={() => setSelectedArtist(null)} className="text-gray-500 hover:text-gray-700"><X /></button>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <img src={selectedArtist?.cover} alt={selectedArtist?.name} className="w-20 h-20 rounded-full object-cover" />
-                    <div className="flex-1 space-y-1">
-                      {editMode ? (
+
+                  <div className="relative w-fit">
+                    <img
+                      src={newFoto ? URL.createObjectURL(newFoto) : `${BASE_URL}${selectedArtist?.fotoArtista}`}
+                      alt="Foto"
+                      className="w-24 h-24 object-cover rounded-full"
+                    />
+                    {editMode && (
+                      <>
+                        <label htmlFor="fotoUpload" className="absolute -bottom-1 -right-1 bg-purple-600 p-2 rounded-full cursor-pointer text-white">
+                          <UploadCloud size={16} />
+                        </label>
                         <input
-                          className="w-full border px-2 py-1 rounded"
-                          value={selectedArtist?.name}
-                          onChange={(e) => setSelectedArtist({ ...selectedArtist!, name: e.target.value })}
+                          id="fotoUpload"
+                          name="foto"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          className="hidden"
                         />
-                      ) : (
-                        <h2 className="font-bold text-lg">{selectedArtist?.name}</h2>
-                      )}
-                      <p className="text-sm text-gray-500">{selectedArtist?.genre}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Biografia</label>
-                    {editMode ? (
-                      <textarea
-                        className="w-full border px-2 py-1 rounded"
-                        value={selectedArtist?.bio}
-                        onChange={(e) => setSelectedArtist({ ...selectedArtist!, bio: e.target.value })}
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-700">{selectedArtist?.bio}</p>
+                      </>
                     )}
                   </div>
-                  <div className="flex justify-end gap-2">
+
+                  {editMode ? (
+                    <>
+                      <input className="w-full border px-2 py-1 rounded" value={selectedArtist?.nomeArtista} onChange={(e) => setSelectedArtist({ ...selectedArtist!, nomeArtista: e.target.value })} />
+                      <input className="w-full border px-2 py-1 rounded" value={selectedArtist?.generoMusical} onChange={(e) => setSelectedArtist({ ...selectedArtist!, generoMusical: e.target.value })} />
+                      <textarea className="w-full border px-2 py-1 rounded" value={selectedArtist?.biografia} onChange={(e) => setSelectedArtist({ ...selectedArtist!, biografia: e.target.value })} />
+                      <input className="w-full border px-2 py-1 rounded" value={selectedArtist?.nacionalidade} onChange={(e) => setSelectedArtist({ ...selectedArtist!, nacionalidade: e.target.value })} />
+                      <select
+                        value={selectedArtist?.grupoMusicalId || ""}
+                        onChange={(e) => setSelectedArtist({ ...selectedArtist!, grupoMusicalId: parseInt(e.target.value) || undefined })}
+                        className="w-full border px-2 py-1 rounded"
+                      >
+                        <option value="">Selecionar grupo musical</option>
+                        {grupos.map(g => (
+                          <option key={g.id} value={g.id}>{g.nomeGrupoMusical}</option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="font-bold">{selectedArtist?.nomeArtista}</h2>
+                      <p className="text-sm text-gray-600">{selectedArtist?.generoMusical}</p>
+                      <p className="text-sm">{selectedArtist?.biografia}</p>
+                      <p className="text-sm text-gray-600">{selectedArtist?.nacionalidade}</p>
+                    </>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-2">
                     <button onClick={() => handleDelete(selectedArtist!.id)} className="bg-red-600 text-white px-3 py-2 rounded hover:bg-red-700 flex items-center gap-1">
                       <Trash size={16} /> Eliminar
                     </button>
@@ -149,6 +226,29 @@ export default function Artists() {
                       {editMode ? 'Salvar' : 'Editar'}
                     </button>
                   </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </Dialog>
+        </Transition>
+
+        {/* Modal de criação */}
+        <Transition show={isCreateModalOpen} as={Fragment}>
+          <Dialog onClose={() => setIsCreateModalOpen(false)} className="relative z-50">
+            <Transition.Child as={Fragment}>
+              <div className="fixed inset-0 bg-black/30" />
+            </Transition.Child>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <Transition.Child as={Fragment}>
+                <Dialog.Panel className="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
+                  <Dialog.Title className="text-lg font-bold">Novo Artista</Dialog.Title>
+                  <CreateArtistForm
+                    onSuccess={(artistCriado) => {
+                      setArtists(prev => [...prev, artistCriado])
+                      setIsCreateModalOpen(false)
+                    }}
+                    onCancel={() => setIsCreateModalOpen(false)}
+                  />
                 </Dialog.Panel>
               </Transition.Child>
             </div>

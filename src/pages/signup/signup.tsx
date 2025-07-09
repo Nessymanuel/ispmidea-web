@@ -29,12 +29,13 @@ export default function SignUp() {
     formData.append("Senha", password);
     formData.append("Email", email);
     formData.append("Telefone", telefone);
-    formData.append("TipoDeUtilizador", "1");
-    if (foto) formData.append("foto", foto); // ← campo de upload
+    formData.append("TipoDeUtilizador", "0"); // 👈 agora enviando como ID 0
+    if (foto) formData.append("foto", foto);
 
     try {
       await signUp(formData);
     } catch (error) {
+      console.error(error);
       setError("Erro ao criar conta");
     }
   };
@@ -47,7 +48,7 @@ export default function SignUp() {
         </Link>
         <div className="justify-center pt-8">
           <h1 className="font-bold text-2xl pb-2">
-            Increva-te na nossa plataforma multimedia
+            Inscreva-se na nossa plataforma multimídia
           </h1>
           <form onSubmit={handleSubmit}>
             <Input label="E-mail" value={email} setValue={setEmail} type="email" />
@@ -58,7 +59,12 @@ export default function SignUp() {
 
             <div className="flex flex-col py-2">
               <span className="font-medium py-2">Foto (arquivo)</span>
-              <input type="file" onChange={(e) => setFoto(e.target.files?.[0] || null)} />
+              <input
+                type="file"
+                accept="image/*"
+                className="border p-2"
+                onChange={(e) => setFoto(e.target.files?.[0] || null)}
+              />
             </div>
 
             {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
@@ -82,7 +88,12 @@ export default function SignUp() {
   );
 }
 
-function Input({ label, value, setValue, type = "text" }: {
+function Input({
+  label,
+  value,
+  setValue,
+  type = "text",
+}: {
   label: string;
   value: string;
   setValue: (val: string) => void;
