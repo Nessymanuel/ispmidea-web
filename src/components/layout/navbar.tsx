@@ -2,16 +2,28 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { Button } from '@/components/ui/button'
 import logo from "../../../public/logoupdate.png"
-import imgprofile from "../../../public/imgprofile.png"
 import Image from 'next/image'
-import { Bell, PlusCircle, Search } from 'lucide-react'
+import { Bell, PlusCircle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+interface LoggedUser {
+  username: string;
+  fotografia: string;
+  tipoDeUtilizador: number;
+}
 
 export function Navbar() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
-  const isLoggedIn = true // Mocked - substituir por estado real depois
+  const [user, setUser] = useState<LoggedUser | null>(null)
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user")
+    if (storedUser) {
+      setUser(JSON.parse(storedUser))
+    }
+  }, [])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,30 +38,14 @@ export function Navbar() {
         <div className="flex items-center h-16">
           {/* Logo */}
           <div className="flex items-center mr-14">
-            <Link href="/" className="flex items-center jun ">
-              <Image src={logo} alt="Logo" width={72} height={10}  />
+            <Link href="/" className="flex items-center">
+              <Image src={logo} alt="Logo" width={72} height={10} />
             </Link>
           </div>
 
-          {/* Search bar - mockado como visível quando logado
-          {isLoggedIn && (
-            <form onSubmit={handleSearch} className="flex-1 max-w-xl mx-4">
-              <div className="relative items-center">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="search"
-                  placeholder="Buscar músicas, vídeos, álbuns..."
-                  className="pl-10 pr-4 py-2 w-full rounded-full"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </form>
-          )} */}
-
-          {/* Right side - mockado */}
+          {/* Right side */}
           <div className="flex items-center ml-auto space-x-4">
-            {isLoggedIn ? (
+            {user ? (
               <>
                 <Button variant="ghost" asChild>
                   <Link href="/upload" className="flex items-center gap-1">
@@ -62,13 +58,12 @@ export function Navbar() {
                   <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                     3
                   </span>
-
                 </Link>
 
                 <div className="flex items-center gap-2">
                   <Link href="/profile" className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
                     <Image
-                      src={imgprofile}
+                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL}${user.fotografia}`}
                       alt="User avatar"
                       width={32}
                       height={32}
@@ -76,8 +71,10 @@ export function Navbar() {
                     />
                   </Link>
                   <div className="hidden md:block">
-                    <p className="text-sm font-medium">Ana</p>
-                    <p className="text-xs text-gray-500">Editor</p>
+                    <p className="text-sm font-medium">{user.username}</p>
+                    <p className="text-xs text-gray-500">
+                      {user.tipoDeUtilizador === 0 ? 'Editor' : 'Utilizador'}
+                    </p>
                   </div>
                 </div>
               </>

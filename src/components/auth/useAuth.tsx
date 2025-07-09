@@ -8,28 +8,23 @@ export function useAuth() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const signIn = async (email: string, senha: string): Promise<void> => {
-    try {
-      setLoading(true);
+  const signIn = async (email: string, senha: string) => {
+  try {
+    const response = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/Utilizador/login`, {
+      email,
+      senha
+    });
 
-      const res = await axios.post(`${API_BASE_URL}/api/Utilizador/login`, {
-        email,
-        senha,
-      });
+    const user = response.data;
 
-      const { id, username, email: userEmail, fotografia, isEditor } = res.data;
+    localStorage.setItem("user", JSON.stringify(user)); // armazena o usuário
 
-      const user = { id, username, email: userEmail, fotografia, isEditor };
+    router.push("/");
+  } catch (err) {
+    throw err;
+  }
+};
 
-      localStorage.setItem("user", JSON.stringify(user));
-      router.push("/home"); // ou dashboard
-    } catch (error) {
-      console.error("Erro ao autenticar:", error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const signUp = async (formData: FormData): Promise<void> => {
     try {
