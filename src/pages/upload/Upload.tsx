@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { UploadCloud, Music, Video, Image, File, X, Check, Loader2 } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import axios from 'axios'
+import { UploadCloud, X, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import MainLayout from '@/components/layout/MainLayout'
 import { Switch } from '@/components/ui/switch'
+import MainLayout from '@/components/layout/MainLayout'
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5252'
 
 type FileWithPreview = {
   file: File
@@ -14,6 +17,7 @@ type FileWithPreview = {
 
 export default function Upload() {
   const [files, setFiles] = useState<FileWithPreview[]>([])
+  const [capa, setCapa] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [tipoMidia, setTipoMidia] = useState<'musica' | 'video'>('musica')
@@ -22,6 +26,16 @@ export default function Upload() {
   const [formData, setFormData] = useState<any>({
     DataLancamento: new Date().toISOString()
   })
+
+  const [artistas, setArtistas] = useState<any[]>([])
+  const [grupos, setGrupos] = useState<any[]>([])
+  const [albuns, setAlbuns] = useState<any[]>([])
+
+  useEffect(() => {
+    axios.get(`${BASE_URL}/api/Artista`).then(res => setArtistas(res.data))
+    axios.get(`${BASE_URL}/api/GrupoMusical`).then(res => setGrupos(res.data))
+    axios.get(`${BASE_URL}/api/Album`).then(res => setAlbuns(res.data))
+  }, [])
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -48,187 +62,152 @@ export default function Upload() {
     setFiles(newFiles)
   }
 
-  const validateFields = () => {
-    const requiredFieldsMusica = ['TituloMusica', 'GeneroMusical']
-    const requiredFieldsVideo = ['TituloVideo', 'GeneroDoVideo']
-    const required = tipoMidia === 'musica' ? requiredFieldsMusica : requiredFieldsVideo
-
-    for (const field of required) {
-      if (!formData[field] || formData[field].trim() === '') {
-        alert(`O campo "${field}" é obrigatório.`)
-        return false
-      }
-    }
-
-    if (files.length === 0) {
-      alert('Adicione pelo menos um ficheiro para upload.')
-      return false
-    }
-
-    return true
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validateFields()) return
+    if (!files.length) return alert('Adicione pelo menos um ficheiro.')
+
+    const payload = new FormData()
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+
+    payload.append(tipoMidia === 'musica' ? 'ficheiroMusica' : 'ficheiroVideo', files[0].file)
+    if (capa) payload.append('capaMusica', capa)
+    payload.append('Visibilidade', visibilidadePublica ? 'publica' : 'privada')
+    payload.append('DataLancamento', formData.DataLancamento)
+
+    Object.entries(formData).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) payload.append(key, value.toString())
+    })
+
+    // Adiciona o ID do utilizador
+    if (user && user.id) {
+      payload.append('UtilizadorId', user.id.toString())
+    }
 
     setIsUploading(true)
     setUploadProgress(0)
 
     try {
-      const payload = new FormData()
-      files.forEach(file => payload.append(file.type === 'audio' ? 'ficheiroMusica' : 'ficheiroVideo', file.file))
-      payload.append('Visibilidade', visibilidadePublica ? 'Público' : 'Privado')
-      payload.append('DataLancamento', formData.DataLancamento || new Date().toISOString())
-
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value) payload.append(key, value)
-      })
-
-      const interval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval)
-            return 100
+      await axios.post(
+        `${BASE_URL}/api/${tipoMidia === 'musica' ? 'Musica' : 'Video'}`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          onUploadProgress: (progressEvent) => {
+            const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1))
+            setUploadProgress(percent)
           }
-          return prev + 25
-        })
-      }, 250)
-
-      await new Promise(resolve => setTimeout(resolve, 3000))
-      clearInterval(interval)
-      setUploadProgress(100)
-
+        }
+      )
+    } catch (err) {
+      console.error('Erro ao enviar:', err)
+      alert('Erro ao enviar. Verifique os campos e tente novamente.')
+    } finally {
       setTimeout(() => {
         setFiles([])
+        setCapa(null)
         setFormData({ DataLancamento: new Date().toISOString() })
-        setIsUploading(false)
         setUploadProgress(0)
+        setIsUploading(false)
       }, 1000)
-
-    } catch (err) {
-      console.error('Erro:', err)
-      setIsUploading(false)
     }
   }
 
   return (
     <MainLayout>
       <div className="max-w-3xl mx-auto px-4 py-20 space-y-10">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Enviar Conteúdo</h1>
-          <p className="text-gray-600">Adicione suas músicas ou vídeos à plataforma</p>
-        </div>
+        <h1 className="text-3xl font-bold text-center">Upload de Conteúdo</h1>
 
-        {/* Tipo de mídia */}
-        <div className="flex items-center gap-4">
-          <label className="text-sm font-medium">Tipo de mídia:</label>
-          <select
-            value={tipoMidia}
-            onChange={(e) => setTipoMidia(e.target.value as 'musica' | 'video')}
-            className="border px-3 py-1 rounded"
-          >
-            <option value="musica">Música</option>
-            <option value="video">Vídeo</option>
-          </select>
-        </div>
-
-        {/* Upload */}
-        <div
-          onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
-          onDrop={(e) => {
-            e.preventDefault()
-            handleFileChange({ target: { files: e.dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>)
-          }}
-          className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-500 relative"
+        <select
+          value={tipoMidia}
+          onChange={(e) => setTipoMidia(e.target.value as 'musica' | 'video')}
+          className="border px-3 py-1 rounded"
         >
+          <option value="musica">Música</option>
+          <option value="video">Vídeo</option>
+        </select>
+
+        {/* Upload de mídia */}
+        <div className="border-2 border-dashed p-6 text-center relative rounded-lg">
           <input
             type="file"
             multiple
             onChange={handleFileChange}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
             accept="audio/*,video/*"
           />
-          <div className="pointer-events-none flex flex-col items-center space-y-2">
-            <UploadCloud className="text-gray-400" size={40} />
-            <p className="font-medium">Clique ou arraste seus arquivos aqui</p>
-            <p className="text-sm text-gray-500">Formatos suportados: MP3, MP4, etc.</p>
-          </div>
+          <UploadCloud className="mx-auto text-gray-400" />
+          <p>Arraste ou clique para enviar sua mídia</p>
         </div>
 
-        {/* Lista */}
-        {files.length > 0 && (
-          <div className="space-y-2">
-            {files.map((file, idx) => (
-              <div key={idx} className="flex justify-between items-center border p-2 rounded">
-                <span>{file.file.name}</span>
-                <button type="button" onClick={() => removeFile(idx)}>
-                  <X className="text-red-500" size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Upload de capa */}
+        <div className="border p-4 rounded">
+          <label className="block text-sm mb-1">Capa da {tipoMidia === 'musica' ? 'Música' : 'Vídeo'}</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setCapa(e.target.files?.[0] || null)}
+            className="w-full border px-3 py-1 rounded"
+          />
+        </div>
 
-        {/* Formulário */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Campos do formulário */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           {tipoMidia === 'musica' ? (
             <>
-              <LabelInput label="Título da Música" required name="TituloMusica" setFormData={setFormData} />
-              <LabelInput label="Gênero Musical" required name="GeneroMusical" setFormData={setFormData} />
-              <LabelInput label="Letra" name="Letra" setFormData={setFormData} />
-              <LabelInput label="Produtor" name="Produtor" setFormData={setFormData} />
-              <LabelInput label="Compositor" name="Compositor" setFormData={setFormData} />
+              <TextInput label="Título da Música" name="TituloMusica" setFormData={setFormData} />
+              <TextInput label="Gênero Musical" name="GeneroMusical" setFormData={setFormData} />
+              <TextInput label="Letra" name="Letra" setFormData={setFormData} />
+              <TextInput label="Produtor" name="Produtor" setFormData={setFormData} />
+              <TextInput label="Compositor" name="Compositor" setFormData={setFormData} />
             </>
           ) : (
             <>
-              <LabelInput label="Título do Vídeo" required name="TituloVideo" setFormData={setFormData} />
-              <LabelInput label="Gênero do Vídeo" required name="GeneroDoVideo" setFormData={setFormData} />
-              <LabelInput label="Legenda" name="Legenda" setFormData={setFormData} />
-              <LabelInput label="Produtor" name="Produtor" setFormData={setFormData} />
+              <TextInput label="Título do Vídeo" name="TituloVideo" setFormData={setFormData} />
+              <TextInput label="Gênero do Vídeo" name="GeneroDoVideo" setFormData={setFormData} />
+              <TextInput label="Legenda" name="Legenda" setFormData={setFormData} />
+              <TextInput label="Produtor" name="Produtor" setFormData={setFormData} />
             </>
           )}
 
-          {/* Visibilidade */}
-          <div className="flex items-center gap-3">
-            <label className="text-sm text-gray-700">Público</label>
+          <SelectInput label="Artista" name="ArtistaId" options={artistas} labelKey="nomeArtista" setFormData={setFormData} />
+          <SelectInput label="Grupo Musical" name="GrupoMusicalId" options={grupos} labelKey="nomeGrupoMusical" setFormData={setFormData} />
+          <SelectInput label="Álbum" name="AlbumId" options={albuns} labelKey="tituloAlbum" setFormData={setFormData} />
+
+          <div className="flex items-center gap-2">
+            <label>Visibilidade pública:</label>
             <Switch checked={visibilidadePublica} onCheckedChange={setVisibilidadePublica} />
           </div>
 
-          {/* Data de Lançamento */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Data de Lançamento *</label>
+            <label className="text-sm">Data de Lançamento</label>
             <input
               type="date"
-              required
               value={formData.DataLancamento.split('T')[0]}
               onChange={(e) => setFormData({ ...formData, DataLancamento: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="w-full px-3 py-2 border rounded"
+              required
             />
           </div>
 
-          {/* Progresso */}
           {isUploading && (
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div
-                className="bg-purple-600 h-2.5 rounded-full"
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${uploadProgress}%` }} />
             </div>
           )}
-
           {uploadProgress === 100 && (
-            <div className="bg-green-100 text-green-700 p-3 rounded flex items-center gap-2">
-              <Check size={18} /> Upload finalizado!
+            <div className="bg-green-100 text-green-800 p-3 rounded flex items-center gap-2">
+              <Check /> Upload concluído!
             </div>
           )}
 
-          <div className="flex justify-end gap-4 pt-2">
-            <Button type="reset" variant="outline" onClick={() => { setFiles([]); setFormData({ DataLancamento: new Date().toISOString() }) }}>
+          <div className="flex justify-end gap-4">
+            <Button type="reset" variant="outline" onClick={() => { setFiles([]); setCapa(null); setFormData({ DataLancamento: new Date().toISOString() }) }}>
               Cancelar
             </Button>
             <Button type="submit" disabled={isUploading}>
-              {isUploading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+              {isUploading && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
               {isUploading ? 'Enviando...' : 'Enviar'}
             </Button>
           </div>
@@ -238,29 +217,35 @@ export default function Upload() {
   )
 }
 
-// Componente auxiliar
-function LabelInput({
-  label,
-  name,
-  setFormData,
-  required = false
-}: {
-  label: string
-  name: string
-  required?: boolean
-  setFormData: (value: any) => void
-}) {
+function TextInput({ label, name, setFormData }: any) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}{required && <span className="text-red-500">*</span>}
-      </label>
+      <label className="block text-sm mb-1">{label}</label>
       <input
         type="text"
-        onChange={(e) => setFormData(prev => ({ ...prev, [name]: e.target.value }))}
-        className="w-full px-4 py-2 border rounded-lg"
-        required={required}
+        onChange={(e) => setFormData((prev: any) => ({ ...prev, [name]: e.target.value }))}
+        className="w-full px-3 py-2 border rounded"
       />
+    </div>
+  )
+}
+
+function SelectInput({ label, name, options, labelKey, setFormData }: any) {
+  return (
+    <div>
+      <label className="block text-sm mb-1">{label}</label>
+      <select
+        required
+        className="w-full px-3 py-2 border rounded text-black bg-white"
+        onChange={(e) => setFormData((prev: any) => ({ ...prev, [name]: e.target.value }))}
+      >
+        <option value="">Selecione...</option>
+        {options.map((opt: any) => (
+          <option key={opt.id} value={String(opt.id)}>
+            {opt[labelKey]}
+          </option>
+        ))}
+      </select>
     </div>
   )
 }
