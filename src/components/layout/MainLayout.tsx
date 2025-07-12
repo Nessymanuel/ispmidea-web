@@ -27,7 +27,7 @@ const navItems = [
   { name: 'Início', href: '/dashboard', icon: Home },
   { name: 'Explorar', href: '/explore', icon: Music },
   { name: 'Artistas', href: '/artist', icon: Mic2 },
-  { name: 'Álbuns', href: '/albums', icon: Album },
+  { name: 'Álbuns', href: '/album', icon: Album },
   { name: 'Playlists', href: '/playlists', icon: ListMusic },
   { name: 'Grupos', href: '/groups', icon: Users },
   { name: 'Rádio', href: '/radio', icon: Radio },
