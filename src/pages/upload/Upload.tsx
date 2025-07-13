@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import MainLayout from '@/components/layout/MainLayout'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5252'
+const BASE_URL = 'http://localhost:5252'
 
 type FileWithPreview = {
   file: File
@@ -32,10 +32,39 @@ export default function Upload() {
   const [albuns, setAlbuns] = useState<any[]>([])
 
   useEffect(() => {
-    axios.get(`${BASE_URL}/api/Artista`).then(res => setArtistas(res.data))
-    axios.get(`${BASE_URL}/api/GrupoMusical`).then(res => setGrupos(res.data))
-    axios.get(`${BASE_URL}/api/Album`).then(res => setAlbuns(res.data))
+    fetch(`${BASE_URL}/api/Artista`).then(res => res.json()).then(setArtistas)
+    fetch(`${BASE_URL}/api/GrupoMusical`).then(res => res.json()).then(setGrupos)
+    fetch(`${BASE_URL}/api/Album`).then(res => res.json()).then(setAlbuns)
   }, [])
+
+  // Resetar campos específicos quando muda o tipo de mídia
+  useEffect(() => {
+    const novaData = new Date().toISOString()
+    if (tipoMidia === 'musica') {
+      setFormData({
+        TituloMusica: '',
+        GeneroMusical: '',
+        Letra: '',
+        Produtor: '',
+        Compositor: '',
+        ArtistaId: '',
+        GrupoMusicalId: '',
+        AlbumId: '',
+        DataLancamento: novaData
+      })
+    } else {
+      setFormData({
+        TituloVideo: '',
+        GeneroDoVideo: '',
+        Legenda: '',
+        Produtor: '',
+        ArtistaId: '',
+        GrupoMusicalId: '',
+        AlbumId: '',
+        DataLancamento: novaData
+      })
+    }
+  }, [tipoMidia])
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -66,44 +95,51 @@ export default function Upload() {
     e.preventDefault()
     if (!files.length) return alert('Adicione pelo menos um ficheiro.')
 
-    const payload = new FormData()
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    const user = JSON.parse(localStorage.getItem("user") || "{}")
+    if (!user?.id) {
+      alert("Usuário não autenticado.")
+      return
+    }
 
+    const payload = new FormData()
     payload.append(tipoMidia === 'musica' ? 'ficheiroMusica' : 'ficheiroVideo', files[0].file)
-    if (capa) payload.append('capaMusica', capa)
+    if (capa) payload.append('capa', capa)
     payload.append('Visibilidade', visibilidadePublica ? 'publica' : 'privada')
     payload.append('DataLancamento', formData.DataLancamento)
+    payload.append('UtilizadorId', user.id.toString())
 
     Object.entries(formData).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) payload.append(key, value.toString())
+      if (value !== null && value !== undefined && value !== '') {
+        payload.append(key, value.toString())
+      }
     })
 
-    // Adiciona o ID do utilizador
-    if (user && user.id) {
-      payload.append('UtilizadorId', user.id.toString())
+    // Debug do FormData
+    for (const [key, value] of payload.entries()) {
+      console.log(`${key}:`, value)
     }
 
     setIsUploading(true)
     setUploadProgress(0)
 
-    try {
-      await axios.post(
-        `${BASE_URL}/api/${tipoMidia === 'musica' ? 'Musica' : 'Video'}`,
-        payload,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          },
-          onUploadProgress: (progressEvent) => {
-            const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1))
-            setUploadProgress(percent)
-          }
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval)
+          return 100
         }
-      )
+        return prev + 20
+      })
+    }, 300)
+
+    try {
+      await axios.post(`${BASE_URL}/api/${tipoMidia === 'musica' ? 'Musica' : 'Video'}`, payload)
+      alert('Upload concluído com sucesso!')
     } catch (err) {
-      console.error('Erro ao enviar:', err)
+      console.error(err)
       alert('Erro ao enviar. Verifique os campos e tente novamente.')
     } finally {
+      clearInterval(interval)
       setTimeout(() => {
         setFiles([])
         setCapa(null)
@@ -128,7 +164,6 @@ export default function Upload() {
           <option value="video">Vídeo</option>
         </select>
 
-        {/* Upload de mídia */}
         <div className="border-2 border-dashed p-6 text-center relative rounded-lg">
           <input
             type="file"
@@ -141,7 +176,6 @@ export default function Upload() {
           <p>Arraste ou clique para enviar sua mídia</p>
         </div>
 
-        {/* Upload de capa */}
         <div className="border p-4 rounded">
           <label className="block text-sm mb-1">Capa da {tipoMidia === 'musica' ? 'Música' : 'Vídeo'}</label>
           <input
@@ -152,7 +186,6 @@ export default function Upload() {
           />
         </div>
 
-        {/* Campos do formulário */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {tipoMidia === 'musica' ? (
             <>
@@ -203,7 +236,11 @@ export default function Upload() {
           )}
 
           <div className="flex justify-end gap-4">
-            <Button type="reset" variant="outline" onClick={() => { setFiles([]); setCapa(null); setFormData({ DataLancamento: new Date().toISOString() }) }}>
+            <Button type="reset" variant="outline" onClick={() => {
+              setFiles([])
+              setCapa(null)
+              setFormData({ DataLancamento: new Date().toISOString() })
+            }}>
               Cancelar
             </Button>
             <Button type="submit" disabled={isUploading}>
