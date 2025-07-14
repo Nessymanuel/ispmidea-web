@@ -206,7 +206,15 @@ export default function Upload() {
 
           <SelectInput label="Artista" name="ArtistaId" options={artistas} labelKey="nomeArtista" setFormData={setFormData} />
           <SelectInput label="Grupo Musical" name="GrupoMusicalId" options={grupos} labelKey="nomeGrupoMusical" setFormData={setFormData} />
-          <SelectInput label="Álbum" name="AlbumId" options={albuns} labelKey="tituloAlbum" setFormData={setFormData} />
+          {tipoMidia === 'musica' && (
+            <SelectInput
+              label="Álbum"
+              name="AlbumId"
+              options={albuns}
+              labelKey="tituloAlbum"
+              setFormData={setFormData}
+            />
+          )}
 
           <div className="flex items-center gap-2">
             <label>Visibilidade pública:</label>

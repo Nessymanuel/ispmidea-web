@@ -13,7 +13,11 @@ interface LoggedUser {
   tipoDeUtilizador: number;
 }
 
-export function Navbar() {
+interface NavbarProps {
+  notificationCount?: number;
+}
+
+export function Navbar({ notificationCount = 0 }: NavbarProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [user, setUser] = useState<LoggedUser | null>(null)
@@ -55,9 +59,11 @@ export function Navbar() {
                 </Button>
                 <Link href="/notifications" className="relative p-2 rounded-full hover:bg-gray-100">
                   <Bell className="text-gray-600" size={20} />
-                  <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    3
-                  </span>
+                  {notificationCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {notificationCount}
+                    </span>
+                  )}
                 </Link>
 
                 <div className="flex items-center gap-2">

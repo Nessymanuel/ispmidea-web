@@ -29,7 +29,7 @@ export default function SignUp() {
     formData.append("Senha", password);
     formData.append("Email", email);
     formData.append("Telefone", telefone);
-    formData.append("TipoDeUtilizador", "0"); // 👈 agora enviando como ID 0
+    formData.append("TipoDeUtilizador", "1"); 
     if (foto) formData.append("foto", foto);
 
     try {
