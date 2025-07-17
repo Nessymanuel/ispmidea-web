@@ -35,7 +35,6 @@ interface Critica {
   pontuacao: number
   comentario: string
   nomeUtilizador: string
-  
 }
 
 type Conteudo = Musica | Video
@@ -102,55 +101,53 @@ export default function Dashboard() {
   }, [selected])
 
   const handleLike = async () => {
-  if (!selected || !userId) return
-  const body = {
-    utilizadorId: userId,
-    musicaId: selected.tipo === 'musica' ? selected.id : null,
-    videoId: selected.tipo === 'video' ? selected.id : null,
-    albumId: null // Adicionado aqui
+    if (!selected || !userId) return
+    const body = {
+      utilizadorId: userId,
+      musicaId: selected.tipo === 'musica' ? selected.id : null,
+      videoId: selected.tipo === 'video' ? selected.id : null,
+      albumId: null // Adicionado aqui
+    }
+
+    console.log('Enviando like:', body)
+
+    try {
+      await fetch(`${BASE_URL}/api/Like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      setLikes(prev => prev + 1)
+    } catch (err) {
+      console.error('Erro ao enviar like:', err)
+    }
   }
 
-  console.log('Enviando like:', body)
+  const handleCritica = async () => {
+    if (!selected || !userId || estrela === 0 || comentario === '') return
+    const body = {
+      utilizadorId: userId,
+      pontuacao: estrela,
+      comentario,
+      musicaId: selected.tipo === 'musica' ? selected.id : null,
+      videoId: selected.tipo === 'video' ? selected.id : null,
+      albumId: null // Adicionado aqui
+    }
 
-  try {
-    await fetch(`${BASE_URL}/api/Like`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    })
-    setLikes(prev => prev + 1)
-  } catch (err) {
-    console.error('Erro ao enviar like:', err)
+    console.log('Enviando crítica:', body)
+
+    try {
+      await fetch(`${BASE_URL}/api/Critica`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      setComentario('')
+      setEstrela(0)
+    } catch (err) {
+      console.error('Erro ao enviar crítica:', err)
+    }
   }
-}
-
-
-const handleCritica = async () => {
-  if (!selected || !userId || estrela === 0 || comentario === '') return
-  const body = {
-    utilizadorId: userId,
-    pontuacao: estrela,
-    comentario,
-    musicaId: selected.tipo === 'musica' ? selected.id : null,
-    videoId: selected.tipo === 'video' ? selected.id : null,
-    albumId: null // Adicionado aqui
-  }
-
-  console.log('Enviando crítica:', body)
-
-  try {
-    await fetch(`${BASE_URL}/api/Critica`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    })
-    setComentario('')
-    setEstrela(0)
-  } catch (err) {
-    console.error('Erro ao enviar crítica:', err)
-  }
-}
-
 
   const conteudosFiltrados = conteudos.filter(c =>
     activeFilter === 'all' || c.tipo === (activeFilter === 'music' ? 'musica' : 'video')
@@ -182,15 +179,23 @@ const handleCritica = async () => {
                 {selected.tipo === 'musica' && (
                   <img
                     src={`${BASE_URL}${selected.capaMusica}`}
-                    className="w-full h-[450px] object-cover rounded-xl"
+                    className="w-full h-[300px] object-cover rounded-xl"
                   />
                 )}
                 {selected.tipo === 'musica' ? (
-                  <audio controls className="w-full">
+                  <audio
+                    key={selected.id} // Atualiza o componente sempre que o conteúdo mudar
+                    controls
+                    className="w-full"
+                  >
                     <source src={`${BASE_URL}/api/Musica/stream/${selected.id}`} type="audio/mpeg" />
                   </audio>
                 ) : (
-                  <video controls className="w-full h-[450px] rounded-xl">
+                  <video
+                    key={selected.id} // Atualiza o componente sempre que o conteúdo mudar
+                    controls
+                    className="w-full h-[385px] rounded-xl"
+                  >
                     <source src={`${BASE_URL}/api/Video/stream/${selected.id}`} type="video/mp4" />
                   </video>
                 )}
@@ -233,8 +238,9 @@ const handleCritica = async () => {
                 <div>
                   <h4 className="font-semibold">Comentários</h4>
                   <ul className="space-y-3">
-                    {criticas.map((critica, idx) => (
+                    {criticas.slice().reverse().map((critica, idx) => (
                       <li key={idx} className="bg-gray-100 p-3 rounded-md">
+
                         <div className="flex gap-1">
                           {[1, 2, 3, 4, 5].map((s) => (
                             <Star key={s} size={14} className={clsx('text-yellow-400', critica.pontuacao >= s ? 'fill-yellow-400' : 'fill-none')} />

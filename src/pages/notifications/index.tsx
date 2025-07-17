@@ -46,13 +46,13 @@ export default function NotificationsPage() {
           return {
             id: n.id,
             type: tipo,
-            message: `${n.nomeUtilizadorOrigem ?? "Alguém"} ${n.textoNotificacao}`,
+            message: `${n.nomeUtilizadorOrigem ?? 'Alguém'} ${n.textoNotificacao}`,
             timestamp: new Date(n.dataNotificacao).toLocaleString('pt-AO'),
             isRead: n.visto === true,
           };
         });
 
-        setNotifications(parsed);
+        setNotifications(parsed.reverse()); // Reversing the notifications to display latest first
         setUnreadCount(parsed.filter((n: Notification) => !n.isRead).length);
       });
 
@@ -64,7 +64,7 @@ export default function NotificationsPage() {
         timestamp: 'Agora mesmo',
         isRead: false,
       };
-      setNotifications((prev) => [novaNotificacao, ...prev]);
+      setNotifications((prev) => [novaNotificacao, ...prev]); // New notification at the start of the list
       setUnreadCount((prev) => prev + 1);
 
       const audio = new Audio('/sounds/notification.wav');

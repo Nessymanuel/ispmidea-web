@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import MainLayout from '@/components/layout/MainLayout'
 
-const BASE_URL = 'http://localhost:5252'
+/*const BASE_URL = 'http://172.20.10.3:5252'*/
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 type FileWithPreview = {
   file: File

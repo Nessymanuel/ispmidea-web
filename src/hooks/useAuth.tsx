@@ -2,7 +2,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5252/api/Utilizador";
+const API_BASE_URL =`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/Utilizador`;
 
 export function useAuth() {
   const router = useRouter();

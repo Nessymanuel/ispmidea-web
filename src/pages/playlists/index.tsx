@@ -1,74 +1,81 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import MainLayout from '@/components/layout/MainLayout';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Plus,
-  Search,
-  Lock,
-  Globe,
-  MoreVertical,
-  Music,
-  Clock,
-} from 'lucide-react';
-import { Navbar } from '@/components/layout/navbar';
-import { Modal } from '@/components/ui/modal';
-import { CreatePlaylistForm } from '@/components/forms/CreatePlaylistForm';
+import { useEffect, useState } from 'react'
+import MainLayout from '@/components/layout/MainLayout'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Plus, Search, Lock, Globe, Music, MoreVertical } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Navbar } from '@/components/layout/navbar'
+import { Modal } from '@/components/ui/modal'
+import { CreatePlaylistForm } from '@/components/forms/CreatePlaylistForm'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 
 interface Playlist {
-  id: number;
-  nomePlaylist: string;
-  tipoPlaylist: string;
-  dataDeCriacao: string;
-  utilizadorId: number;
-  capaPlaylist: string;
-  nomeUtilizador: string;
+  id: number
+  nomePlaylist: string
+  tipoPlaylist: string
+  dataDeCriacao: string
+  utilizadorId: number
+  capaPlaylist: string
+  nomeUtilizador: string
+  totalMusicas?: number
 }
 
 export default function PlaylistsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const router = useRouter()
 
   useEffect(() => {
     const fetchPlaylists = async () => {
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) return;
+      const storedUser = localStorage.getItem('user')
+      if (!storedUser) return
 
-      const currentUser = JSON.parse(storedUser);
-      const userId = currentUser.id;
+      const currentUser = JSON.parse(storedUser)
+      const userId = currentUser.id
 
       const [publicRes, userRes] = await Promise.all([
         fetch(`${BASE_URL}/api/Playlist/publicas`),
         fetch(`${BASE_URL}/api/Playlist/por-editor/${userId}`),
-      ]);
+      ])
 
-      const publicPlaylists = await publicRes.json();
-      const ownPlaylists = await userRes.json();
+      const publicPlaylists = await publicRes.json()
+      const ownPlaylists = await userRes.json()
 
       const ownPlaylistsWithName = ownPlaylists.map((p: Playlist) => ({
         ...p,
         nomeUtilizador: currentUser.username,
-      }));
+      }))
 
       const combined = [...publicPlaylists, ...ownPlaylistsWithName].filter(
         (p, index, self) => index === self.findIndex((x) => x.id === p.id)
-      );
+      )
 
-      setPlaylists(combined);
-    };
+      const updated = await Promise.all(
+        combined.map(async (playlist) => {
+          try {
+            const res = await fetch(`${BASE_URL}/api/MusicaDaPlaylist/por-playlist/${playlist.id}`)
+            const musicas = await res.json()
+            return { ...playlist, totalMusicas: musicas.length }
+          } catch {
+            return { ...playlist, totalMusicas: 0 }
+          }
+        })
+      )
 
-    fetchPlaylists();
-  }, []);
+      setPlaylists(updated)
+    }
+
+    fetchPlaylists()
+  }, [])
 
   const filteredPlaylists = playlists.filter((playlist) =>
     playlist.nomePlaylist.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  )
 
   return (
     <MainLayout>
@@ -97,7 +104,11 @@ export default function PlaylistsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPlaylists.map((playlist) => (
-            <Card key={playlist.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+            <Card
+              key={playlist.id}
+              className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => router.push(`/playlistDetailPage/${playlist.id}`)}
+            >
               <div className="bg-gray-100 w-full h-[160px] overflow-hidden">
                 {playlist.capaPlaylist && (
                   <img
@@ -122,11 +133,7 @@ export default function PlaylistsPage() {
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1">
                       <Music className="w-4 h-4" />
-                      0 músicas
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      00:00
+                      {playlist.totalMusicas ?? 0} músicas
                     </div>
                   </div>
                   {playlist.tipoPlaylist === 'publica' ? (
@@ -145,7 +152,6 @@ export default function PlaylistsPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         title="Criar Nova Playlist"
-        
       >
         <div className="p-2 sm:p-4">
           <CreatePlaylistForm
@@ -155,5 +161,5 @@ export default function PlaylistsPage() {
         </div>
       </Modal>
     </MainLayout>
-  );
+  )
 }
